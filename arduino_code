@@ -1,0 +1,109 @@
+#include <SoftwareSerial.h>
+#include <Wire.h>
+#define RE 8
+#define DE 7
+const byte nitro[] = {0x01,0x03, 0x00, 0x1e, 0x00, 0x01, 0xe4, 0x0c};
+const byte phos[] = {0x01,0x03, 0x00, 0x1f, 0x00, 0x01, 0xb5, 0xcc};
+const byte pota[] = {0x01,0x03, 0x00, 0x20, 0x00, 0x01, 0x85, 0xc0};
+byte values[11];
+SoftwareSerial mod(2, 3);
+void setup() {
+  Serial.begin(9600);
+  mod.begin(9600);
+  pinMode(RE, OUTPUT);
+  pinMode(DE, OUTPUT);
+  digitalWrite(RE, LOW);
+  digitalWrite(DE, LOW);
+  delay(500);
+  pinMode(13, OUTPUT); // output pin for relay board, this will send signal to the relay
+  pinMode(A0, INPUT); // input pin coming from soil sensor
+}
+
+void loop() {
+  byte val1,val2,val3;
+  val1 = nitrogen();
+  delay(250);
+  val2 = phosphorous();
+  delay(250);
+  val3 = potassium();
+  delay(250);
+
+  // Print values to the serial monitor
+  Serial.print("Nitrogen: ");
+  Serial.print(val1);
+  Serial.println(" mg/kg");
+  Serial.print("Phosphorous: ");
+  Serial.print(val2);
+  Serial.println(" mg/kg");
+  Serial.print("Potassium: ");
+  Serial.print(val3);
+  Serial.println(" mg/kg");
+  int water = analogRead(A0); // reading the signal coming from the soil sensor
+  int moisturePercentage = map(water, 0, 1023, 100, 0);
+  Serial.print("Moisture Percentage: ");
+  Serial.print(moisturePercentage);
+  Serial.println("%");
+  Serial.print("-----------------");
+  Serial.println();
+  delay(500);
+
+
+  if (water < 550) { // if water level is low (i.e., soil is dry) then turn on the relay
+    digitalWrite(13, HIGH); // high is to turn on the relay
+  } else { // if water level is high (i.e., soil is wet) then turn off the relay
+    digitalWrite(13, LOW); // low is to turn off the relay
+  }
+  delay(5000);
+}
+byte nitrogen(){
+  digitalWrite(DE,HIGH);
+  digitalWrite(RE,HIGH);
+  delay(10);
+  if(mod.write(nitro,sizeof(nitro))==8){
+    digitalWrite(DE,LOW);
+    digitalWrite(RE,LOW);
+    // When we send the inquiry frame to the NPK sensor, then it replies with the response frame
+    // now we will read the response frame, and store the values in the values[] arrary, we will be using a for loop.
+    for(byte i=0;i<7;i++){
+    //Serial.print(modbus.read(),HEX);
+    values[i] = mod.read();
+   // Serial.print(values[i],HEX);
+    }
+    Serial.println();
+  }
+  return values[4]; // returns the Nigtrogen value only, which is stored at location 4 in the array
+}
+ 
+byte phosphorous(){
+  digitalWrite(DE,HIGH);
+  digitalWrite(RE,HIGH);
+  delay(10);
+  if(mod.write(phos,sizeof(phos))==8){
+    digitalWrite(DE,LOW);
+    digitalWrite(RE,LOW);
+    for(byte i=0;i<7;i++){
+    //Serial.print(modbus.read(),HEX);
+    values[i] = mod.read();
+   // Serial.print(values[i],HEX);
+    }
+    Serial.println();
+  }
+  return values[4];
+}
+ 
+byte potassium(){
+  digitalWrite(DE,HIGH);
+  digitalWrite(RE,HIGH);
+  delay(10);
+  if(mod.write(pota,sizeof(pota))==8){
+    digitalWrite(DE,LOW);
+    digitalWrite(RE,LOW);
+    for(byte i=0;i<7;i++){
+    //Serial.print(modbus.read(),HEX);
+    values[i] = mod.read();
+    //Serial.print(values[i],HEX);
+    }
+    Serial.println();
+  }
+  return values[4];
+}
